@@ -1,0 +1,13 @@
+{
+  "name": "phone-party",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.4",
+    "three": "^0.187.0"
+  }
+}

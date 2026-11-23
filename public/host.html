@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone Party</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #bfe3f5; color: #1b2a3a;
+         display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+  #lobby { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  h1 { margin: 32px 0 8px; font-size: 48px; }
+  .join { display: flex; gap: 24px; align-items: center; background: #fff; padding: 16px 24px; border-radius: 16px; }
+  .join svg { width: 200px; height: 200px; }
+  .join p { font-size: 22px; margin: 0; }
+  .players { display: grid; grid-template-columns: repeat(4, minmax(0, 200px)); gap: 20px; margin-top: 40px;
+           width: min(860px, 95vw); justify-content: center; }
+  .card { position: relative; height: 200px; border-radius: 20px; background: #fff; border: 6px solid var(--c);
+          display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+          font-size: 28px; font-weight: 700; opacity: .4; transition: transform .05s, background .05s; }
+  .card.on { opacity: 1; }
+  .card.off { opacity: .7; border-style: dashed; }
+  .card.press { background: var(--c); color: #fff; transform: scale(1.06); }
+  .card small { font-size: 16px; font-weight: 600; }
+  .card .btn { font-size: 20px; height: 24px; }
+  .card .kick { position: absolute; top: 6px; right: 6px; border: 0; background: none; font-size: 18px;
+                cursor: pointer; opacity: .4; }
+  .card .kick:hover { opacity: 1; }
+  #pause { position: fixed; inset: 0; z-index: 10; background: rgba(27, 42, 58, .75); color: #fff; display: flex;
+           flex-direction: column; align-items: center; justify-content: center; font-size: 40px; font-weight: 700;
+           pointer-events: none; }
+  #pause small { font-size: 22px; font-weight: 500; margin-top: 12px; }
+  #removeBtns { display: flex; gap: 12px; margin-top: 20px; }
+  #removeBtns button, .events button, .results button {
+    pointer-events: auto; font: 700 20px system-ui, sans-serif; padding: 12px 24px; border: 0; border-radius: 12px;
+    background: var(--c, #1b2a3a); color: #fff; cursor: pointer; }
+  .events { margin: 32px 0; display: flex; gap: 16px; }
+  .events button { font-size: 28px; padding: 18px 36px; }
+  .events button:disabled { opacity: .35; cursor: default; }
+
+  /* Race screen */
+  #game { position: fixed; inset: 0; overflow: hidden; }
+  #game canvas { display: block; }
+  .event-ui { position: absolute; inset: 0; pointer-events: none; color: #fff; }
+  .event-ui .big { position: absolute; top: 24%; width: 100%; text-align: center; font-size: min(140px, 11vw); font-weight: 900;
+                    text-shadow: 0 6px 0 #1b2a3a; }
+  .event-ui .big.foul { color: #ff4d5a; top: 28%; font-size: min(110px, 8vw); }
+  .event-ui .hint { position: absolute; bottom: 6%; width: 100%; text-align: center; font-size: 32px; font-weight: 700;
+                     text-shadow: 0 3px 0 #1b2a3a; }
+
+  /* Skiing split-screen views */
+  .ski-view { position: absolute; box-sizing: border-box; border: 2px solid #fff; pointer-events: none; color: #fff;
+              font-weight: 800; }
+  .ski-top { position: absolute; top: 10px; left: 10px; display: flex; gap: 12px; align-items: center;
+             background: var(--c); padding: 6px 14px; border-radius: 999px; font-size: 20px; box-shadow: 0 2px 8px #1b2a3a55; }
+  .ski-top span { font-size: 16px; opacity: .95; }
+  .ski-bar { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 8px; background: #ffffff88; border-radius: 4px; }
+  .ski-bar div { height: 100%; width: 0; background: var(--c); border-radius: 4px; }
+  .ski-msg { position: absolute; top: 40%; width: 100%; text-align: center; font-size: min(64px, 6vw); font-weight: 900;
+             text-shadow: 0 4px 0 #1b2a3a; }
+  .ski-msg[data-kind=crash] { color: #ff4d5a; }
+  .ski-msg[data-kind=finish] { color: #7cdc6b; }
+  .ski-board { position: absolute; top: 10px; left: 10px; background: #fffffff0; color: #1b2a3a; padding: 12px 18px;
+               border-radius: 14px; font-size: 18px; display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+  .ski-board div { border-left: 6px solid var(--c); padding-left: 8px; display: flex; justify-content: space-between; gap: 16px; }
+  .ski-board span { font-weight: 600; }
+
+  /* Swimming: breathe prompt, breath timing meter, feedback colours */
+  .event-ui .breath-meter { position: absolute; left: 0; top: 0; width: 180px; height: 22px; display: flex;
+                            border: 3px solid #fff; border-radius: 6px; box-shadow: 0 2px 8px #1b2a3a66; }
+  .breath-meter i { display: block; height: 100%; }
+  .breath-meter i.red { background: #e63946; }
+  .breath-meter i.yellow { background: #ffd166; }
+  .breath-meter i.green { background: #2ec45a; }
+  .breath-meter .marker { position: absolute; top: -6px; bottom: -6px; width: 6px; margin-left: -3px;
+                          background: #1b2a3a; border: 2px solid #fff; border-radius: 3px; }
+  .event-ui .tag[data-fb=green] { background: #2ec45a; }
+  .event-ui .tag[data-fb=yellow] { background: #ffd166; color: #1b2a3a; }
+  .event-ui .tag[data-fb=red] { background: #e63946; }
+  .event-ui .tag.alert { background: #fff; color: #e63946; outline: 4px solid var(--c); animation: blinkTag .4s steps(2) infinite; }
+  @keyframes blinkTag { 50% { color: #1b2a3a; } }
+
+  /* Javelin player panels: angle meter + distance-to-line warning */
+  .jpanels { position: absolute; left: 0; right: 0; top: 16px; display: flex; justify-content: center; gap: 14px;
+             pointer-events: none; }
+  .jpanel { width: 230px; background: #fff; color: #1b2a3a; border-radius: 16px; border: 5px solid var(--c);
+            padding: 8px 12px; display: grid; grid-template-columns: 70px 1fr; grid-template-rows: auto auto auto auto;
+            column-gap: 10px; font-weight: 700; }
+  .jpanel { transition: transform .2s, opacity .2s; }
+  .jpanel:not(.active) { opacity: .6; }
+  .jpanel.active { transform: scale(1.08); box-shadow: 0 6px 20px #1b2a3a55; }
+  .jpanel .jname { grid-column: 2; font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .jpanel .gauge { grid-row: 1 / span 4; width: 70px; height: 70px; align-self: center; }
+  .jpanel .gauge .deg { font: 800 24px system-ui, sans-serif; fill: #1b2a3a; }
+  .jpanel.ideal .gauge .needle { stroke: #2e9e44; }
+  .jpanel.ideal .gauge .deg { fill: #2e9e44; }
+  .jpanel .jbar { position: relative; height: 10px; margin: 4px 0; background: #e9eef3; border-radius: 5px; overflow: hidden; }
+  .jpanel .jfill { height: 100%; width: 0; background: var(--c); }
+  .jpanel .jwarn { position: absolute; top: 0; bottom: 0; right: 0; background: #ffd16688; }
+  .jpanel .jstatus { font-size: 16px; }
+  .jpanel .jbest { font-size: 13px; color: #5a6b7d; min-height: 1em; }
+  .jpanel[data-state=warn] .jstatus { color: #d98a00; }
+  .jpanel[data-state=danger] { animation: blink .3s steps(2) infinite; }
+  .jpanel[data-state=danger] .jstatus, .jpanel[data-state=foul] .jstatus { color: #e63946; }
+  .jpanel[data-state=foul] { background: #ffe3e5; }
+  @keyframes blink { 50% { border-color: #e63946; } }
+  .event-ui .tag { position: absolute; left: 0; top: 0; white-space: nowrap; padding: 4px 12px; border-radius: 999px;
+                    background: var(--c); font-size: 18px; font-weight: 700; }
+  .event-ui .results { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); min-width: 420px;
+                        background: #fff; color: #1b2a3a; border-radius: 20px; padding: 24px 32px; pointer-events: auto;
+                        display: flex; flex-direction: column; gap: 10px; }
+  .event-ui .results h2 { margin: 0 0 8px; text-align: center; font-size: 32px; }
+  .event-ui .row { display: grid; grid-template-columns: 50px 1fr auto; align-items: center; font-size: 24px;
+                    border-left: 8px solid var(--c); padding: 6px 12px; }
+  .event-ui .results button { margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="lobby">
+  <h1>Phone Party</h1>
+  <div class="join">
+    {{QR}}
+    <p>Scan to join<br><b>{{URL}}</b><br><small>Phones must be on the same Wi-Fi</small></p>
+  </div>
+  <div class="players" id="players"></div>
+  <div class="events">
+    <button data-event="sprint" disabled>🏃 100m Sprint</button>
+    <button data-event="javelin" disabled>🎯 Javelin</button>
+    <button data-event="swim" disabled>🏊 Swimming</button>
+    <button data-event="ski" disabled>⛷️ Skiing</button>
+  </div>
+</div>
+<div id="game" hidden></div>
+<div id="pause" hidden>
+  <div>Paused</div>
+  <small id="waiting"></small>
+  <div id="removeBtns"></div>
+</div>
+
+<script type="importmap">{ "imports": { "three": "/three/three.module.js" } }</script>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module">
+  import { startSprint } from '/sprint.js';
+  import { startJavelin } from '/javelin.js';
+  import { startSwim } from '/swim.js';
+  import { startSki } from '/ski.js';
+  const EVENTS = { sprint: startSprint, javelin: startJavelin, swim: startSwim, ski: startSki };
+
+  const box = document.getElementById('players');
+  const pause = document.getElementById('pause');
+  const lobby = document.getElementById('lobby');
+  const gameBox = document.getElementById('game');
+  const startBtns = document.querySelectorAll('[data-event]');
+  const pressed = [new Set(), new Set(), new Set(), new Set()];
+  const socket = io({ query: { role: 'host' } });
+  const label = (p) => p.name || `P${p.slot + 1}`;
+  let game = null, paused = false, players = [];
+
+  // shortcut: allows a 1-player race so you can test alone; the spec says 2-4, enforce later if wanted.
+  const racers = () => players.filter(p => p.joined && p.connected && p.name);
+
+  startBtns.forEach(btn => btn.onclick = () => {
+    lobby.hidden = true;
+    gameBox.hidden = false;
+    game = EVENTS[btn.dataset.event]({
+      players: racers(), container: gameBox, isPaused: () => paused,
+      onDone: () => { game = null; gameBox.hidden = true; lobby.hidden = false; },
+    });
+  });
+
+  document.getElementById('removeBtns').addEventListener('click', (e) => {
+    const slot = e.target.dataset.slot;
+    if (slot !== undefined) socket.emit('kick', Number(slot));
+  });
+
+  socket.on('players', (state) => {
+    players = state.players;
+    paused = state.paused;
+    startBtns.forEach(b => b.disabled = racers().length === 0);
+    // Names are cleaned on the server (no < > & quotes), so they are safe to put in HTML.
+    box.innerHTML = players.map(p => `
+      <div class="card ${p.joined ? (p.connected ? 'on' : 'off') : ''}" id="p${p.slot}" style="--c:${p.color}">
+        ${p.joined ? `<button class="kick" data-slot="${p.slot}" title="Remove player" aria-label="Remove ${label(p)}">✕</button>` : ''}
+        <small>P${p.slot + 1}</small>
+        <div>${p.joined ? label(p) : 'Waiting…'}</div>
+        <small>${!p.joined ? '' : !p.connected ? 'Reconnecting…' : p.name ? 'Ready' : 'Typing name…'}</small>
+        <div class="btn"></div>
+      </div>`).join('');
+    players.forEach(p => pressed[p.slot].clear());
+
+    pause.hidden = !paused;
+    const gone = players.filter(p => p.joined && !p.connected);
+    document.getElementById('waiting').textContent = 'Waiting for ' + gone.map(label).join(', ') + ' to reconnect…';
+    document.getElementById('removeBtns').innerHTML =
+      gone.map(p => `<button data-slot="${p.slot}" style="--c:${p.color}">Remove ${label(p)}</button>`).join('');
+  });
+
+  box.addEventListener('click', (e) => {
+    const slot = e.target.closest('.kick')?.dataset.slot;
+    if (slot !== undefined) socket.emit('kick', Number(slot));
+  });
+
+  socket.on('btn', ({ slot, b, down }) => {
+    if (game) return game.input(slot, b, down);
+    down ? pressed[slot].add(b) : pressed[slot].delete(b);
+    const card = document.getElementById('p' + slot);
+    card.classList.toggle('press', pressed[slot].size > 0);
+    card.querySelector('.btn').textContent = [...pressed[slot]].join(' ');
+  });
+</script>
+</body>
+</html>
