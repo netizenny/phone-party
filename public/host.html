@@ -111,6 +111,24 @@
   .event-ui .row { display: grid; grid-template-columns: 50px 1fr auto; align-items: center; font-size: 24px;
                     border-left: 8px solid var(--c); padding: 6px 12px; }
   .event-ui .results button { margin-top: 10px; }
+
+  /* Pole vault player panels: run progress to the box (yellow = plant zone) and swing meter (green = let-go window) */
+  .vpanels { position: absolute; left: 0; right: 0; top: 16px; display: flex; justify-content: center; gap: 14px;
+             pointer-events: none; }
+  .vpanel { width: 230px; background: #fff; color: #1b2a3a; border-radius: 16px; border: 5px solid var(--c);
+            padding: 8px 12px; font-weight: 700; transition: transform .2s, opacity .2s; }
+  .vpanel:not(.active) { opacity: .6; }
+  .vpanel.out { opacity: .35; }
+  .vpanel.active { transform: scale(1.08); box-shadow: 0 6px 20px #1b2a3a55; }
+  .vpanel .vname { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vpanel .vbar { position: relative; height: 10px; margin: 5px 0; background: #e9eef3; border-radius: 5px; overflow: hidden; }
+  .vpanel .vfill { position: relative; height: 100%; width: 0; background: var(--c); }
+  .vpanel .vzone { position: absolute; top: 0; bottom: 0; background: #7cc36baa; z-index: 1; }
+  .vpanel .vstatus { font-size: 16px; }
+  .vpanel .vbest { font-size: 13px; color: #5a6b7d; min-height: 1em; }
+  .vpanel[data-state=go] { animation: blink .3s steps(2) infinite; }
+  .vpanel[data-state=go] .vstatus, .vpanel[data-state=bad] .vstatus { color: #e63946; }
+  .vpanel[data-state=good] .vstatus { color: #2e9e44; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -127,6 +145,7 @@
     <button data-event="javelin" disabled>🎯 Javelin</button>
     <button data-event="swim" disabled>🏊 Swimming</button>
     <button data-event="ski" disabled>⛷️ Skiing</button>
+    <button data-event="polevault" disabled>🏑 Pole Vault</button>
   </div>
 </div>
 <div id="game" hidden></div>
@@ -143,7 +162,8 @@
   import { startJavelin } from '/javelin.js';
   import { startSwim } from '/swim.js';
   import { startSki } from '/ski.js';
-  const EVENTS = { sprint: startSprint, javelin: startJavelin, swim: startSwim, ski: startSki };
+  import { startPoleVault } from '/polevault.js';
+  const EVENTS = { sprint: startSprint, javelin: startJavelin, swim: startSwim, ski: startSki, polevault: startPoleVault };
 
   const box = document.getElementById('players');
   const pause = document.getElementById('pause');

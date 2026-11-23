@@ -1,7 +1,7 @@
 # Phone Party
 
 Party games on one big screen, with phones as controllers. Players scan a QR code to join (2–4 players).
-Events: 100m Sprint, Javelin, Swimming, Skiing.
+Events: 100m Sprint, Javelin, Swimming, Skiing, Pole Vault.
 
 ## Play
 
